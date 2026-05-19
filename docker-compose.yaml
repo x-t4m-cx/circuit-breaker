@@ -1,0 +1,34 @@
+version: "3.9"
+
+services:
+  data:
+    build:
+      context: ./data
+      dockerfile: Dockerfile
+    container_name: data
+
+    networks:
+      - internal
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: api
+    environment:
+      DATA_URL: http://data:8080
+    networks:
+      - internal
+      - external
+    depends_on:
+      data:
+         condition: service_started
+    ports:
+      - "8080:8080"
+
+
+networks:
+  internal:
+    driver: bridge
+  external:
+    driver: bridge

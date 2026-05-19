@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: api
+
+
+data:
+  url: ${DATA_URL}
