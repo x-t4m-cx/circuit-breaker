@@ -1,7 +1,10 @@
 package com.sstu.api.circuit;
 
 import java.util.function.Supplier;
+
+import com.sstu.api.exception.ServerErrorException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.client.ResourceAccessException;
 
 @Slf4j
 public class CircuitBreaker {
@@ -31,7 +34,7 @@ public class CircuitBreaker {
             checkAndTransitionFromOpen();
 
             if (state == State.OPEN) {
-                throw new OpenException("CircuitBreaker OPEN");
+                throw new CircuitBreakerOpenException("CircuitBreaker OPEN");
             }
 
             return executeWithRetry(supplier, maxRetries);
@@ -44,7 +47,7 @@ public class CircuitBreaker {
             T result = supplier.get();
             onSuccess();
             return result;
-        } catch (Exception e) {
+        } catch (ServerErrorException | ResourceAccessException e) {
             if (retries > 0) {
                 log.warn("Ошибка при выполнении запроса. Осталось попыток: {}. Повторяем...", retries);
                 return executeWithRetry(supplier, retries - 1);
@@ -89,9 +92,9 @@ public class CircuitBreaker {
                     transition(State.CLOSED);
                     reset();
                 }
-
                 return;
             }
+
             if (state == State.CLOSED) {
                 consecutiveFailuresInClosedState = 0;
                 log.debug("Успех, счетчик ошибок сброшен");
@@ -111,6 +114,7 @@ public class CircuitBreaker {
             this.state = newState;
             log.info("{} → {}", prev, newState);
         }
+
     }
 
     private void checkAndTransitionFromOpen() {
@@ -123,7 +127,7 @@ public class CircuitBreaker {
                 consecutiveSuccessesInHalfOpenState = 0;
             } else {
                 long remaining = timeoutMs - openTime;
-                throw new OpenException("CircuitBreaker OPEN, повторите через " + remaining + " мс");
+                throw new CircuitBreakerOpenException("CircuitBreaker OPEN, повторите через " + remaining + " мс");
             }
         }
     }
